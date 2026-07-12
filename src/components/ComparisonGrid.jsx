@@ -15,7 +15,7 @@ const SPEC_ROWS = [
 ];
 
 export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightDifferences }) {
-  const [editingPcId, setEditingPcId] = useState(null);
+  const [editingCell, setEditingCell] = useState(null); // { pcId, key }
   const [editingText, setEditingText] = useState('');
 
   const getBadgeClass = (size = '') => {
@@ -49,9 +49,14 @@ export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightD
     return new Set(values).size > 1;
   };
 
-  const handleSaveNotes = (pcId) => {
-    onUpdatePc(pcId, { notes: editingText });
-    setEditingPcId(null);
+  const handleCellClick = (pcId, key, currentVal) => {
+    setEditingCell({ pcId, key });
+    setEditingText(currentVal || '');
+  };
+
+  const handleSaveCell = (pcId, key) => {
+    onUpdatePc(pcId, { [key]: editingText.trim() });
+    setEditingCell(null);
   };
 
   if (pcs.length === 0) {
@@ -87,9 +92,78 @@ export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightD
                       )}
                     </div>
                     <div className="pc-title-row">
-                      <div>
-                        <h3 className="pc-name">{pc.name}</h3>
-                        <p className="pc-price">${pc.price || '0.00'}</p>
+                      <div style={{ flex: 1 }}>
+                        {/* PC Name Inline Edit */}
+                        {editingCell?.pcId === pc.id && editingCell?.key === 'name' ? (
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            onBlur={() => handleSaveCell(pc.id, 'name')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveCell(pc.id, 'name');
+                              if (e.key === 'Escape') setEditingCell(null);
+                            }}
+                            autoFocus
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '1rem',
+                              fontWeight: 700,
+                              background: 'rgba(7, 9, 19, 0.8)',
+                              color: '#fff',
+                              marginBottom: '0.25rem',
+                              width: '90%'
+                            }}
+                          />
+                        ) : (
+                          <h3 
+                            className="pc-name"
+                            onClick={() => handleCellClick(pc.id, 'name', pc.name)}
+                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                            title="Click to edit name"
+                          >
+                            {pc.name}
+                            <Edit2 size={10} style={{ opacity: 0.3 }} />
+                          </h3>
+                        )}
+
+                        {/* PC Price Inline Edit */}
+                        {editingCell?.pcId === pc.id && editingCell?.key === 'price' ? (
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--secondary)', marginRight: '4px', fontWeight: 800 }}>$</span>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onBlur={() => handleSaveCell(pc.id, 'price')}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveCell(pc.id, 'price');
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              style={{
+                                padding: '0.15rem 0.35rem',
+                                fontSize: '0.9rem',
+                                background: 'rgba(7, 9, 19, 0.8)',
+                                color: 'var(--secondary)',
+                                fontWeight: 800,
+                                width: '70%'
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <p 
+                            className="pc-price"
+                            onClick={() => handleCellClick(pc.id, 'price', pc.price)}
+                            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            title="Click to edit price"
+                          >
+                            ${pc.price || '0.00'}
+                            <Edit2 size={10} style={{ opacity: 0.3 }} />
+                          </p>
+                        )}
                       </div>
                       <button
                         className="delete-pc-btn"
@@ -121,66 +195,92 @@ export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightD
                     const isMbSize = key === 'motherboardSize';
                     const rawVal = pc[key];
                     const cleanVal = isMbSize ? getCleanSizeLabel(rawVal) : rawVal;
+                    const isEditing = editingCell?.pcId === pc.id && editingCell?.key === key;
 
                     return (
                       <td
                         key={pc.id}
                         className={isDifferent ? 'diff-cell-highlight' : ''}
                       >
-                        {isMbSize ? (
-                          <span className={`badge ${getBadgeClass(rawVal)}`}>
-                            {cleanVal}
-                          </span>
-                        ) : key === 'notes' ? (
-                          editingPcId === pc.id ? (
-                            <input
-                              type="text"
+                        {isEditing ? (
+                          isMbSize ? (
+                            <select
                               className="form-input"
                               value={editingText}
                               onChange={(e) => setEditingText(e.target.value)}
-                              onBlur={() => handleSaveNotes(pc.id)}
+                              onBlur={() => handleSaveCell(pc.id, 'motherboardSize')}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveNotes(pc.id);
-                                if (e.key === 'Escape') setEditingPcId(null);
+                                if (e.key === 'Enter') handleSaveCell(pc.id, 'motherboardSize');
+                                if (e.key === 'Escape') setEditingCell(null);
                               }}
                               autoFocus
                               style={{
                                 padding: '0.25rem 0.5rem',
                                 fontSize: '0.85rem',
                                 width: '100%',
-                                background: 'rgba(7, 9, 19, 0.8)'
+                                background: 'rgba(7, 9, 19, 0.8)',
+                                color: '#fff'
+                              }}
+                            >
+                              <option value="Mini-ITX">Mini-ITX</option>
+                              <option value="Micro-ATX">Micro-ATX</option>
+                              <option value="ATX">ATX</option>
+                              <option value="E-ATX">E-ATX</option>
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onBlur={() => handleSaveCell(pc.id, key)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveCell(pc.id, key);
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              style={{
+                                padding: '0.25rem 0.5rem',
+                                fontSize: '0.85rem',
+                                width: '100%',
+                                background: 'rgba(7, 9, 19, 0.8)',
+                                color: '#fff'
                               }}
                             />
-                          ) : (
-                            <div
-                              onClick={() => { setEditingPcId(pc.id); setEditingText(pc.notes || ''); }}
-                              style={{
-                                cursor: 'pointer',
-                                minHeight: '28px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                borderRadius: '6px',
-                                padding: '0.25rem 0.5rem',
-                                background: 'rgba(255, 255, 255, 0.02)',
-                                border: '1px dashed rgba(255, 255, 255, 0.1)'
-                              }}
-                              title="Click to edit notes"
-                            >
+                          )
+                        ) : (
+                          <div
+                            onClick={() => handleCellClick(pc.id, key, rawVal)}
+                            style={{
+                              cursor: 'pointer',
+                              minHeight: '28px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              borderRadius: '6px',
+                              padding: '0.25rem 0.5rem',
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px dashed rgba(255, 255, 255, 0.06)'
+                            }}
+                            title={`Click to edit ${label}`}
+                          >
+                            {isMbSize ? (
+                              <span className={`badge ${getBadgeClass(rawVal)}`}>
+                                {cleanVal}
+                              </span>
+                            ) : (
                               <span style={{
                                 fontSize: '0.85rem',
-                                color: pc.notes ? 'var(--text-primary)' : 'var(--text-muted)',
-                                fontStyle: pc.notes ? 'normal' : 'italic',
+                                color: rawVal ? 'var(--text-primary)' : 'var(--text-muted)',
+                                fontStyle: rawVal ? 'normal' : 'italic',
                                 wordBreak: 'break-word',
                                 paddingRight: '0.5rem'
                               }}>
-                                {pc.notes || 'Click to add notes...'}
+                                {rawVal || 'Click to edit...'}
                               </span>
-                              <Edit2 size={12} style={{ color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }} />
-                            </div>
-                          )
-                        ) : (
-                          cleanVal || <span style={{ color: 'var(--text-muted)' }}>—</span>
+                            )}
+                            <Edit2 size={10} style={{ color: 'var(--text-muted)', opacity: 0.4, flexShrink: 0 }} />
+                          </div>
                         )}
                       </td>
                     );

@@ -231,9 +231,19 @@ export default function App() {
         }
 
         const dbUpdates = {};
-        if ('notes' in updatedFields) dbUpdates.notes = updatedFields.notes;
         if ('name' in updatedFields) dbUpdates.name = updatedFields.name;
         if ('price' in updatedFields) dbUpdates.price = updatedFields.price;
+        if ('cpu' in updatedFields) dbUpdates.cpu = updatedFields.cpu;
+        if ('gpu' in updatedFields) dbUpdates.gpu = updatedFields.gpu;
+        if ('ram' in updatedFields) dbUpdates.ram = updatedFields.ram;
+        if ('storage' in updatedFields) dbUpdates.storage = updatedFields.storage;
+        if ('motherboardSize' in updatedFields) dbUpdates.motherboard_size = updatedFields.motherboardSize;
+        if ('motherboardName' in updatedFields) dbUpdates.motherboard_name = updatedFields.motherboardName;
+        if ('psu' in updatedFields) dbUpdates.psu = updatedFields.psu;
+        if ('case' in updatedFields) dbUpdates.case = updatedFields.case;
+        if ('cooling' in updatedFields) dbUpdates.cooling = updatedFields.cooling;
+        if ('image' in updatedFields) dbUpdates.image = updatedFields.image;
+        if ('notes' in updatedFields) dbUpdates.notes = updatedFields.notes;
 
         const { error } = await supabase
           .from('pc_builds')
