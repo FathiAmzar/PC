@@ -220,7 +220,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
         }
 
         const resData = await response.json();
-        responseText = resData.choices?.[0]?.message?.content;
+        responseText = resData.choices?.[0]?.message?.content || resData.data?.choices?.[0]?.message?.content;
         
         if (!responseText) {
           console.warn('AI Response Data (no content choices):', resData);
