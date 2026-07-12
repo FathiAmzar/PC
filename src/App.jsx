@@ -200,6 +200,13 @@ export default function App() {
   };
 
   const handleDeletePc = async (id) => {
+    const pcToDelete = pcs.find((pc) => pc.id === id);
+    const pcName = pcToDelete ? pcToDelete.name : 'this configuration';
+
+    if (!window.confirm(`Are you sure you want to delete "${pcName}"?`)) {
+      return;
+    }
+
     if (currentUser) {
       try {
         // If it's a default build that isn't in DB, delete it locally
