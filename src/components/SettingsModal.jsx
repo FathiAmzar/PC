@@ -154,7 +154,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
               color: activeSettingsTab === 'api' ? '#fff' : 'var(--text-secondary)',
               padding: '0.75rem 1.5rem',
               fontWeight: 600,
-              cursor: pointer,
+              cursor: 'pointer',
               fontSize: '0.9rem',
               transition: 'all 0.2s'
             }}
@@ -171,7 +171,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
               color: activeSettingsTab === 'auth' ? '#fff' : 'var(--text-secondary)',
               padding: '0.75rem 1.5rem',
               fontWeight: 600,
-              cursor: pointer,
+              cursor: 'pointer',
               fontSize: '0.9rem',
               transition: 'all 0.2s'
             }}
