@@ -357,7 +357,7 @@ Respond ONLY with the JSON object. Do not include markdown wraps like \`\`\`json
         const endpoint = isOpenRouterKey 
           ? 'https://openrouter.ai/api/v1/chat/completions' 
           : isClineKey 
-            ? '/api/cline/chat/completions'
+            ? '/api/cline'
             : 'https://api.openai.com/v1/chat/completions';
         
         const model = isOpenRouterKey 

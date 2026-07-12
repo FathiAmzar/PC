@@ -7,9 +7,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/cline': {
-        target: 'https://api.cline.bot/api/v1',
+        target: 'https://api.cline.bot/api/v1/chat/completions',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/cline/, '')
+        rewrite: () => ''
       }
     }
   }

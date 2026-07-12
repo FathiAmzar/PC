@@ -201,7 +201,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
           endpoint = 'https://openrouter.ai/api/v1/chat/completions';
           model = 'google/gemini-2.5-flash';
         } else if (isClineKey) {
-          endpoint = '/api/cline/chat/completions';
+          endpoint = '/api/cline';
           model = 'deepseek/deepseek-v4-pro';
         } else {
           endpoint = 'https://api.openai.com/v1/chat/completions';
