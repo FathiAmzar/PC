@@ -3,6 +3,7 @@ import { LayoutGrid, Settings, Plus, Sparkles } from 'lucide-react';
 import SettingsModal from './components/SettingsModal';
 import AddPCModal from './components/AddPCModal';
 import ComparisonGrid from './components/ComparisonGrid';
+import { supabase } from './supabaseClient';
 
 const INITIAL_BUILDS = [
   {
@@ -37,49 +38,185 @@ const INITIAL_BUILDS = [
   }
 ];
 
+// Map DB row keys to client PC build state keys
+const mapDbToPc = (dbBuild) => ({
+  id: dbBuild.id,
+  name: dbBuild.name,
+  price: dbBuild.price || '',
+  cpu: dbBuild.cpu || '',
+  gpu: dbBuild.gpu || '',
+  ram: dbBuild.ram || '',
+  storage: dbBuild.storage || '',
+  motherboardSize: dbBuild.motherboard_size || 'ATX',
+  motherboardName: dbBuild.motherboard_name || '',
+  psu: dbBuild.psu || '',
+  case: dbBuild.case || '',
+  cooling: dbBuild.cooling || '',
+  image: dbBuild.image || ''
+});
+
+// Map client PC build state keys to DB columns
+const mapPcToDb = (pcBuild, userId) => ({
+  user_id: userId,
+  name: pcBuild.name,
+  price: pcBuild.price,
+  cpu: pcBuild.cpu,
+  gpu: pcBuild.gpu,
+  ram: pcBuild.ram,
+  storage: pcBuild.storage,
+  motherboard_size: pcBuild.motherboardSize,
+  motherboard_name: pcBuild.motherboardName,
+  psu: pcBuild.psu,
+  case: pcBuild.case,
+  cooling: pcBuild.cooling,
+  image: pcBuild.image
+});
+
 export default function App() {
   const [pcs, setPcs] = useState([]);
   const [apiKey, setApiKey] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [highlightDifferences, setHighlightDifferences] = useState(false);
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    const savedPcs = localStorage.getItem('pc_comparison_builds');
-    if (savedPcs) {
+  // Load builds depending on current user login state
+  const loadBuilds = async (user) => {
+    if (user) {
       try {
-        setPcs(JSON.parse(savedPcs));
-      } catch (e) {
-        setPcs(INITIAL_BUILDS);
+        const { data, error } = await supabase
+          .from('pc_builds')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setPcs(data.map(mapDbToPc));
+        } else {
+          // Cloud is empty. Check if there are any local custom builds to migrate
+          const localBuildsStr = localStorage.getItem('pc_comparison_builds');
+          if (localBuildsStr) {
+            try {
+              const localBuilds = JSON.parse(localBuildsStr);
+              // Filter out the default builds so we only migrate actual custom builds
+              const customBuilds = localBuilds.filter(b => !b.id.startsWith('default-'));
+              
+              if (customBuilds.length > 0) {
+                const buildsToUpload = customBuilds.map(b => mapPcToDb(b, user.id));
+                const { error: insertErr } = await supabase.from('pc_builds').insert(buildsToUpload);
+                
+                if (!insertErr) {
+                  // Successful migration! Clear local builds and reload from cloud
+                  localStorage.removeItem('pc_comparison_builds');
+                  loadBuilds(user);
+                  return;
+                }
+              }
+            } catch (jsonErr) {
+              console.error('Error parsing local storage builds for sync:', jsonErr);
+            }
+          }
+          // Default to empty state if no custom builds to migrate
+          setPcs([]);
+        }
+      } catch (err) {
+        console.error('Error loading builds from Supabase:', err.message);
+        setPcs([]);
       }
     } else {
-      setPcs(INITIAL_BUILDS);
+      // Guest / Offline mode
+      const savedPcs = localStorage.getItem('pc_comparison_builds');
+      if (savedPcs) {
+        try {
+          setPcs(JSON.parse(savedPcs));
+        } catch (e) {
+          setPcs(INITIAL_BUILDS);
+        }
+      } else {
+        setPcs(INITIAL_BUILDS);
+      }
     }
+  };
 
+  // Initialize Auth session and Listen for changes
+  useEffect(() => {
+    // 1. Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null;
+      setCurrentUser(user);
+      loadBuilds(user);
+    });
+
+    // 2. Set up auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      setCurrentUser(user);
+      loadBuilds(user);
+    });
+
+    // 3. Load Gemini API Key
     const savedKey = localStorage.getItem('pc_comparison_gemini_key');
     if (savedKey) {
       setApiKey(savedKey);
     }
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Save PCs to localStorage when they change
-  const savePcs = (newPcs) => {
-    setPcs(newPcs);
-    localStorage.setItem('pc_comparison_builds', JSON.stringify(newPcs));
+  const handleAddPc = async (newPc) => {
+    if (currentUser) {
+      try {
+        const dbPc = mapPcToDb(newPc, currentUser.id);
+        const { data, error } = await supabase
+          .from('pc_builds')
+          .insert(dbPc)
+          .select();
+
+        if (error) throw error;
+        if (data && data[0]) {
+          setPcs([...pcs, mapDbToPc(data[0])]);
+        }
+      } catch (err) {
+        alert('Error saving build to database: ' + err.message);
+      }
+    } else {
+      // Guest mode: save to local state and localStorage
+      const pcWithId = {
+        ...newPc,
+        id: 'custom-' + Date.now().toString(),
+      };
+      const updated = [...pcs, pcWithId];
+      setPcs(updated);
+      localStorage.setItem('pc_comparison_builds', JSON.stringify(updated));
+    }
   };
 
-  const handleAddPc = (newPc) => {
-    const pcWithId = {
-      ...newPc,
-      id: Date.now().toString(),
-    };
-    savePcs([...pcs, pcWithId]);
-  };
+  const handleDeletePc = async (id) => {
+    if (currentUser) {
+      try {
+        // If it's a default build that isn't in DB, delete it locally
+        if (id.startsWith('default-')) {
+          setPcs(pcs.filter((pc) => pc.id !== id));
+          return;
+        }
 
-  const handleDeletePc = (id) => {
-    const filtered = pcs.filter((pc) => pc.id !== id);
-    savePcs(filtered);
+        const { error } = await supabase
+          .from('pc_builds')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        setPcs(pcs.filter((pc) => pc.id !== id));
+      } catch (err) {
+        alert('Error deleting build: ' + err.message);
+      }
+    } else {
+      // Guest mode
+      const filtered = pcs.filter((pc) => pc.id !== id);
+      setPcs(filtered);
+      localStorage.setItem('pc_comparison_builds', JSON.stringify(filtered));
+    }
   };
 
   const handleSaveApiKey = (key) => {
@@ -89,6 +226,11 @@ export default function App() {
     } else {
       localStorage.removeItem('pc_comparison_gemini_key');
     }
+  };
+
+  const handleAuthChange = (user) => {
+    setCurrentUser(user);
+    loadBuilds(user);
   };
 
   return (
@@ -101,11 +243,11 @@ export default function App() {
         </div>
 
         <div className="controls-bar">
-          {/* Key status indicator */}
+          {/* Cloud sync indicator */}
           <div className="glass-card status-indicator" style={{ padding: '0.5rem 1rem', borderRadius: '10px' }}>
-            <span className={`status-dot ${apiKey ? 'green' : 'red'}`} />
+            <span className={`status-dot ${currentUser ? 'green' : 'red'}`} />
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-              Gemini AI: {apiKey ? 'Ready' : 'Not Configured'}
+              Cloud: {currentUser ? 'Synced' : 'Guest Mode'}
             </span>
           </div>
 
@@ -113,7 +255,7 @@ export default function App() {
           <button
             className="btn btn-secondary"
             onClick={() => setIsSettingsOpen(true)}
-            title="Open Settings"
+            title="Settings & Accounts"
           >
             <Settings size={18} />
             Settings
@@ -178,8 +320,10 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSave={handleSaveApiKey}
-        savedKey={apiKey}
+        onSaveApiKey={handleSaveApiKey}
+        savedApiKey={apiKey}
+        currentUser={currentUser}
+        onAuthChange={handleAuthChange}
       />
 
       <AddPCModal
