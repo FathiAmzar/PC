@@ -197,13 +197,26 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
           body: JSON.stringify({
             model,
             messages: [{ role: 'user', content: messagesContent }],
-            response_format: { type: 'json_object' }
+            ...((isOpenRouterKey || isOpenAIKey) ? { response_format: { type: 'json_object' } } : {})
           })
         });
 
         if (!response.ok) {
-          const errJson = await response.json().catch(() => ({}));
-          throw new Error(errJson.error?.message || `API failed with status ${response.status}`);
+          const errText = await response.text().catch(() => '');
+          let errMsg = `API failed with status ${response.status}`;
+          try {
+            const errJson = JSON.parse(errText);
+            if (errJson.error?.message) {
+              errMsg += `: ${errJson.error.message}`;
+            } else if (errJson.message) {
+              errMsg += `: ${errJson.message}`;
+            }
+          } catch {
+            if (errText) {
+              errMsg += `: ${errText.substring(0, 150)}`;
+            }
+          }
+          throw new Error(errMsg);
         }
 
         const resData = await response.json();
