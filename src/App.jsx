@@ -297,6 +297,15 @@ export default function App() {
 
     setIsAnalyzing(true);
 
+    // Strip heavy base64 image data to keep payloads tiny and prevent Vercel 4.5MB limits
+    const stripImage = (pc) => {
+      const { image, ...cleanPc } = pc;
+      return cleanPc;
+    };
+
+    const cleanBaseline = stripImage(baselinePc);
+    const cleanOthers = otherPcs.map(stripImage);
+
     const systemPrompt = `You are a professional PC hardware value evaluator and pricing analyst.
 Your task is to analyze the price-to-performance ratio of several comparison PCs against a specific 'baseline' PC.
 
@@ -323,7 +332,7 @@ You MUST return a JSON object matching this exact schema:
 Return results for ALL active PCs (including the baseline PC itself, so the user sees a score for the baseline as well!).
 Respond ONLY with the JSON object. Do not include markdown wraps like \`\`\`json or explanations outside the JSON.`;
 
-    const userPrompt = `Baseline PC details:\n${JSON.stringify(baselinePc, null, 2)}\n\nOther PCs to evaluate:\n${JSON.stringify(otherPcs, null, 2)}`;
+    const userPrompt = `Baseline PC details:\n${JSON.stringify(cleanBaseline, null, 2)}\n\nOther PCs to evaluate:\n${JSON.stringify(cleanOthers, null, 2)}`;
 
     try {
       let responseText = '';
