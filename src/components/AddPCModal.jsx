@@ -45,6 +45,43 @@ export default function AddPCModal({ isOpen, onClose, onAdd, apiKey }) {
     }
   }, [isOpen]);
 
+  // Handle clipboard paste (Ctrl+V) for images
+  useEffect(() => {
+    const handlePaste = (e) => {
+      if (!isOpen) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (activeTab === 'ai' && aiSubTab === 'image') {
+                const base64Data = reader.result.split(',')[1];
+                setAiImageBase64(base64Data);
+                setAiImagePreview(reader.result);
+                setErrorMsg('');
+              } else if (activeTab === 'manual') {
+                setFormData((prev) => ({ ...prev, image: reader.result }));
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+          e.preventDefault();
+          break; // Stop looking after finding the first image
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [isOpen, activeTab, aiSubTab]);
+
   if (!isOpen) return null;
 
   const handleInputChange = (e) => {
@@ -397,7 +434,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
                           }}
                         >
                           <Upload size={32} style={{ color: 'var(--text-muted)' }} />
-                          <span className="dropzone-text">Drag and drop spec photo, or click to browse</span>
+                          <span className="dropzone-text">Drag & drop, click to browse, or paste image with Ctrl+V</span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supports JPG, PNG</span>
                           <input
                             type="file"
@@ -644,7 +681,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
                   </div>
                   <div className="form-group">
                     <label htmlFor="pc-image-upload" className="form-label">
-                      Build Photo
+                      Build Photo (Upload or paste with Ctrl+V)
                     </label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <input
