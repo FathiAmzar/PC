@@ -188,13 +188,13 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
               <div className="alert-banner alert-banner-info" style={{ marginBottom: '1.5rem' }}>
                 <AlertCircle size={16} className="alert-banner-icon" />
                 <div>
-                  <strong>AI API Key:</strong> Enter your Google Gemini key (starts with <code>AIzaSy</code>), OpenRouter key (starts with <code>sk-or-</code>), or OpenAI key (starts with <code>sk-</code>). The key is stored locally in your browser and used to auto-populate PC specifications.
+                  <strong>AI API Key:</strong> Enter your Gemini key (starts with <code>AIzaSy</code>), Cline key (starts with <code>sk_</code>), OpenRouter key (starts with <code>sk-or-</code>), or OpenAI key (starts with <code>sk-</code>). The key is stored locally in your browser and used to auto-populate PC specifications.
                 </div>
               </div>
 
               <div className="form-group">
                 <label htmlFor="api-key-input" className="form-label">
-                  AI API Key (Gemini / OpenRouter / OpenAI)
+                  AI API Key (Gemini / Cline / OpenRouter / OpenAI)
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Key size={18} style={{
@@ -209,7 +209,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
                     type="password"
                     className="form-input"
                     style={{ paddingLeft: '2.5rem' }}
-                    placeholder="AIzaSy... or sk-..."
+                    placeholder="AIzaSy... or sk_... or sk-..."
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
@@ -223,7 +223,15 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
                     style={{ color: 'var(--primary)', textDecoration: 'none' }}
                   >
                     Google AI Studio
-                  </a>, or create an account on{' '}
+                  </a>, or get a Cline key from{' '}
+                  <a
+                    href="https://app.cline.bot/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                  >
+                    Cline Dashboard
+                  </a>, or{' '}
                   <a
                     href="https://openrouter.ai/"
                     target="_blank"

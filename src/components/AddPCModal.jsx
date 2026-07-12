@@ -114,6 +114,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
       const isGeminiKey = apiKey.startsWith('AIzaSy');
       const isOpenRouterKey = apiKey.startsWith('sk-or-');
       const isAnthropicKey = apiKey.startsWith('sk-ant-');
+      const isClineKey = apiKey.startsWith('sk_');
       const isOpenAIKey = apiKey.startsWith('sk-') && !isOpenRouterKey && !isAnthropicKey;
 
       if (isGeminiKey) {
@@ -154,15 +155,21 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
         const resData = await response.json();
         responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
       } 
-      else if (isOpenRouterKey || isOpenAIKey) {
-        // OpenRouter or OpenAI API Call
-        const endpoint = isOpenRouterKey 
-          ? 'https://openrouter.ai/api/v1/chat/completions' 
-          : 'https://api.openai.com/v1/chat/completions';
-        
-        const model = isOpenRouterKey 
-          ? 'google/gemini-2.5-flash' 
-          : 'gpt-4o-mini';
+      else if (isOpenRouterKey || isOpenAIKey || isClineKey) {
+        // OpenRouter, OpenAI, or Cline API Call
+        let endpoint = '';
+        let model = '';
+
+        if (isOpenRouterKey) {
+          endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+          model = 'google/gemini-2.5-flash';
+        } else if (isClineKey) {
+          endpoint = 'https://api.cline.bot/api/v1/chat/completions';
+          model = 'deepseek/deepseek-v4-pro';
+        } else {
+          endpoint = 'https://api.openai.com/v1/chat/completions';
+          model = 'gpt-4o-mini';
+        }
 
         let messagesContent = [];
         if (aiSubTab === 'text') {
