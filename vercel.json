@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/cline/:path*",
+      "destination": "https://api.cline.bot/api/v1/:path*"
+    }
+  ]
+}
