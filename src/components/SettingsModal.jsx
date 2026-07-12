@@ -182,19 +182,19 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
 
         <div className="modal-body" style={{ paddingTop: '1.5rem' }}>
           
-          {/* TAB 1: Gemini AI Key settings */}
+          {/* TAB 1: AI Key settings */}
           {activeSettingsTab === 'api' && (
             <form onSubmit={handleSaveApiKey}>
               <div className="alert-banner alert-banner-info" style={{ marginBottom: '1.5rem' }}>
                 <AlertCircle size={16} className="alert-banner-icon" />
                 <div>
-                  <strong>Gemini API Key:</strong> The key is used to auto-populate PC specifications from build text descriptions or photos. Your key is stored locally in your browser's storage and is only sent directly to Google's Gemini API endpoints.
+                  <strong>AI API Key:</strong> Enter your Google Gemini key (starts with <code>AIzaSy</code>), OpenRouter key (starts with <code>sk-or-</code>), or OpenAI key (starts with <code>sk-</code>). The key is stored locally in your browser and used to auto-populate PC specifications.
                 </div>
               </div>
 
               <div className="form-group">
                 <label htmlFor="api-key-input" className="form-label">
-                  Gemini API Key
+                  AI API Key (Gemini / OpenRouter / OpenAI)
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Key size={18} style={{
@@ -209,13 +209,13 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
                     type="password"
                     className="form-input"
                     style={{ paddingLeft: '2.5rem' }}
-                    placeholder="AIzaSy..."
+                    placeholder="AIzaSy... or sk-..."
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  Don't have an API key? You can get a free one from the{' '}
+                  Need a key? Get a free Gemini key from{' '}
                   <a
                     href="https://aistudio.google.com/"
                     target="_blank"
@@ -223,6 +223,14 @@ export default function SettingsModal({ isOpen, onClose, onSaveApiKey, savedApiK
                     style={{ color: 'var(--primary)', textDecoration: 'none' }}
                   >
                     Google AI Studio
+                  </a>, or create an account on{' '}
+                  <a
+                    href="https://openrouter.ai/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                  >
+                    OpenRouter
                   </a>.
                 </p>
               </div>

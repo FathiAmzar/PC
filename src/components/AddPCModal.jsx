@@ -81,7 +81,7 @@ export default function AddPCModal({ isOpen, onClose, onAdd, apiKey }) {
 
   const parseWithGemini = async () => {
     if (!apiKey) {
-      setErrorMsg('API Key is missing. Please set your Gemini API Key in the settings first.');
+      setErrorMsg('API Key is missing. Please set your API Key in the settings first.');
       return;
     }
 
@@ -110,78 +110,120 @@ Return the specifications as a JSON object matching this exact schema:
 Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\`json or explanations.`;
 
     try {
-      let contents = [];
-      
-      if (aiSubTab === 'text') {
-        if (!descText.trim()) {
-          throw new Error('Please type or paste some PC description text first.');
-        }
-        contents = [
-          {
-            parts: [
-              { text: `${systemPrompt}\n\nUser text input:\n${descText}` }
-            ]
-          }
-        ];
-      } else {
-        if (!aiImageBase64) {
-          throw new Error('Please upload an image for analysis first.');
-        }
-        contents = [
-          {
-            parts: [
-              { text: systemPrompt },
-              {
-                inlineData: {
-                  mimeType: 'image/jpeg',
-                  data: aiImageBase64
-                }
-              }
-            ]
-          }
-        ];
-      }
+      let responseText = '';
+      const isGeminiKey = apiKey.startsWith('AIzaSy');
+      const isOpenRouterKey = apiKey.startsWith('sk-or-');
+      const isAnthropicKey = apiKey.startsWith('sk-ant-');
+      const isOpenAIKey = apiKey.startsWith('sk-') && !isOpenRouterKey && !isAnthropicKey;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
+      if (isGeminiKey) {
+        // Direct Google Gemini API Call
+        let contents = [];
+        if (aiSubTab === 'text') {
+          if (!descText.trim()) throw new Error('Please type or paste some PC description text first.');
+          contents = [{ parts: [{ text: `${systemPrompt}\n\nUser text input:\n${descText}` }] }];
+        } else {
+          if (!aiImageBase64) throw new Error('Please upload an image for analysis first.');
+          contents = [
+            {
+              parts: [
+                { text: systemPrompt },
+                { inlineData: { mimeType: 'image/jpeg', data: aiImageBase64 } }
+              ]
+            }
+          ];
+        }
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents,
+              generationConfig: { responseMimeType: 'application/json' }
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(errJson.error?.message || `Google API failed with status ${response.status}`);
+        }
+
+        const resData = await response.json();
+        responseText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+      } 
+      else if (isOpenRouterKey || isOpenAIKey) {
+        // OpenRouter or OpenAI API Call
+        const endpoint = isOpenRouterKey 
+          ? 'https://openrouter.ai/api/v1/chat/completions' 
+          : 'https://api.openai.com/v1/chat/completions';
+        
+        const model = isOpenRouterKey 
+          ? 'google/gemini-2.5-flash' 
+          : 'gpt-4o-mini';
+
+        let messagesContent = [];
+        if (aiSubTab === 'text') {
+          if (!descText.trim()) throw new Error('Please type or paste some PC description text first.');
+          messagesContent.push({ type: 'text', text: `${systemPrompt}\n\nUser text input:\n${descText}` });
+        } else {
+          if (!aiImageBase64) throw new Error('Please upload an image for analysis first.');
+          messagesContent.push({ type: 'text', text: systemPrompt });
+          messagesContent.push({
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${aiImageBase64}` }
+          });
+        }
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            ...(isOpenRouterKey ? {
+              'HTTP-Referer': window.location.href,
+              'X-Title': 'VibeCompare'
+            } : {})
           },
           body: JSON.stringify({
-            contents,
-            generationConfig: {
-              responseMimeType: 'application/json'
-            }
+            model,
+            messages: [{ role: 'user', content: messagesContent }],
+            response_format: { type: 'json_object' }
           })
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(errJson.error?.message || `API failed with status ${response.status}`);
         }
-      );
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || `API request failed with status ${response.status}`);
+        const resData = await response.json();
+        responseText = resData.choices?.[0]?.message?.content;
+      } 
+      else if (isAnthropicKey) {
+        throw new Error('Anthropic Claude API keys (sk-ant-...) cannot be used directly in the browser due to CORS security restrictions. Please use a Gemini key (starting with AIzaSy) or an OpenRouter key (starting with sk-or-).');
+      } 
+      else {
+        throw new Error('Unrecognized API key format. Ensure you use a Gemini key (starts with AIzaSy) or an OpenRouter/OpenAI key (starts with sk-).');
       }
 
-      const resData = await response.json();
-      const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!rawText) {
-        throw new Error('Could not get a valid response text from Gemini.');
+      if (!responseText) {
+        throw new Error('Could not get a valid response from the AI assistant.');
       }
 
-      // Safe JSON parse, handling markdown wraps if Gemini ignored the instruction
+      // Safe JSON parse
       let parsedSpecs = {};
       try {
-        const cleanJsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const cleanJsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         parsedSpecs = JSON.parse(cleanJsonStr);
       } catch (parseErr) {
-        // Fallback search with regex
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           parsedSpecs = JSON.parse(jsonMatch[0]);
         } else {
-          throw new Error('Failed to parse specification JSON from Gemini. Response text: ' + rawText.substring(0, 150));
+          throw new Error('Failed to parse specification JSON from AI response.');
         }
       }
 
@@ -204,7 +246,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
         notes: parsedSpecs.notes || prev.notes || '',
       }));
 
-      setSuccessMsg('Specs successfully generated! Switched to Manual tab for your review.');
+      setSuccessMsg('Specs successfully generated! Switched to Manual tab for review.');
       setTimeout(() => {
         setActiveTab('manual');
         setSuccessMsg('');
