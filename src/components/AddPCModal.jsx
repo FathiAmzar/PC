@@ -13,7 +13,8 @@ const INITIAL_FORM = {
   psu: '',
   case: '',
   cooling: '',
-  image: ''
+  image: '',
+  notes: ''
 };
 
 export default function AddPCModal({ isOpen, onClose, onAdd, apiKey }) {
@@ -103,7 +104,8 @@ Return the specifications as a JSON object matching this exact schema:
   "motherboardName": "Full motherboard model name (e.g. ASUS ROG STRIX B650E-E GAMING WIFI)",
   "psu": "PSU wattage and rating (e.g. Corsair RM850x 850W 80+ Gold)",
   "case": "PC Case model (e.g. Lian Li O11 Dynamic EVO)",
-  "cooling": "CPU cooling setup (e.g. NZXT Kraken Elite 360 AIO)"
+  "cooling": "CPU cooling setup (e.g. NZXT Kraken Elite 360 AIO)",
+  "notes": "Any special notes or status info parsed from listing description (e.g. 'sold', 'pickup only', 'negotiable', or empty if none)"
 }
 Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\`json or explanations.`;
 
@@ -199,6 +201,7 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
         psu: parsedSpecs.psu || prev.psu || '',
         case: parsedSpecs.case || prev.case || '',
         cooling: parsedSpecs.cooling || prev.cooling || '',
+        notes: parsedSpecs.notes || prev.notes || '',
       }));
 
       setSuccessMsg('Specs successfully generated! Switched to Manual tab for your review.');
@@ -610,6 +613,22 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label htmlFor="pc-notes-input" className="form-label">
+                    Personal Notes (e.g. Location, Availability, Seller status)
+                  </label>
+                  <textarea
+                    id="pc-notes-input"
+                    name="notes"
+                    rows={2}
+                    className="form-input"
+                    placeholder="e.g. Sold already, or too far away in the city"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    style={{ resize: 'vertical' }}
+                  />
                 </div>
               </div>
             )}

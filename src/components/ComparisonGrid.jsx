@@ -1,5 +1,5 @@
-import React from 'react';
-import { Trash2, ShieldAlert, Cpu, HardDrive, Cpu as GpuIcon, Disc, Layers, Zap, Box, Thermometer, DollarSign } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, Cpu, HardDrive, Cpu as GpuIcon, Disc, Layers, Zap, Box, Thermometer, FileText, Edit2 } from 'lucide-react';
 
 const SPEC_ROWS = [
   { key: 'cpu', label: 'CPU', icon: Cpu },
@@ -11,9 +11,13 @@ const SPEC_ROWS = [
   { key: 'psu', label: 'Power Supply', icon: Zap },
   { key: 'case', label: 'Case / Chassis', icon: Box },
   { key: 'cooling', label: 'CPU Cooler', icon: Thermometer },
+  { key: 'notes', label: 'Personal Notes', icon: FileText },
 ];
 
-export default function ComparisonGrid({ pcs, onDeletePc, highlightDifferences }) {
+export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightDifferences }) {
+  const [editingPcId, setEditingPcId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
   const getBadgeClass = (size = '') => {
     const s = size.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (s.includes('miniitx') || s.includes('itx')) return 'badge-itx';
@@ -43,6 +47,11 @@ export default function ComparisonGrid({ pcs, onDeletePc, highlightDifferences }
       return (val || '').toString().trim().toLowerCase();
     });
     return new Set(values).size > 1;
+  };
+
+  const handleSaveNotes = (pcId) => {
+    onUpdatePc(pcId, { notes: editingText });
+    setEditingPcId(null);
   };
 
   if (pcs.length === 0) {
@@ -122,6 +131,54 @@ export default function ComparisonGrid({ pcs, onDeletePc, highlightDifferences }
                           <span className={`badge ${getBadgeClass(rawVal)}`}>
                             {cleanVal}
                           </span>
+                        ) : key === 'notes' ? (
+                          editingPcId === pc.id ? (
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onBlur={() => handleSaveNotes(pc.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveNotes(pc.id);
+                                if (e.key === 'Escape') setEditingPcId(null);
+                              }}
+                              autoFocus
+                              style={{
+                                padding: '0.25rem 0.5rem',
+                                fontSize: '0.85rem',
+                                width: '100%',
+                                background: 'rgba(7, 9, 19, 0.8)'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              onClick={() => { setEditingPcId(pc.id); setEditingText(pc.notes || ''); }}
+                              style={{
+                                cursor: 'pointer',
+                                minHeight: '28px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderRadius: '6px',
+                                padding: '0.25rem 0.5rem',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                border: '1px dashed rgba(255, 255, 255, 0.1)'
+                              }}
+                              title="Click to edit notes"
+                            >
+                              <span style={{
+                                fontSize: '0.85rem',
+                                color: pc.notes ? 'var(--text-primary)' : 'var(--text-muted)',
+                                fontStyle: pc.notes ? 'normal' : 'italic',
+                                wordBreak: 'break-word',
+                                paddingRight: '0.5rem'
+                              }}>
+                                {pc.notes || 'Click to add notes...'}
+                              </span>
+                              <Edit2 size={12} style={{ color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }} />
+                            </div>
+                          )
                         ) : (
                           cleanVal || <span style={{ color: 'var(--text-muted)' }}>—</span>
                         )}

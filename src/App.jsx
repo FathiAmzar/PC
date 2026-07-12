@@ -52,7 +52,8 @@ const mapDbToPc = (dbBuild) => ({
   psu: dbBuild.psu || '',
   case: dbBuild.case || '',
   cooling: dbBuild.cooling || '',
-  image: dbBuild.image || ''
+  image: dbBuild.image || '',
+  notes: dbBuild.notes || ''
 });
 
 // Map client PC build state keys to DB columns
@@ -69,7 +70,8 @@ const mapPcToDb = (pcBuild, userId) => ({
   psu: pcBuild.psu,
   case: pcBuild.case,
   cooling: pcBuild.cooling,
-  image: pcBuild.image
+  image: pcBuild.image,
+  notes: pcBuild.notes
 });
 
 export default function App() {
@@ -219,6 +221,38 @@ export default function App() {
     }
   };
 
+  const handleUpdatePc = async (id, updatedFields) => {
+    if (currentUser) {
+      try {
+        // Default builds that aren't in DB: update locally in state only
+        if (id.startsWith('default-')) {
+          setPcs(pcs.map(pc => pc.id === id ? { ...pc, ...updatedFields } : pc));
+          return;
+        }
+
+        const dbUpdates = {};
+        if ('notes' in updatedFields) dbUpdates.notes = updatedFields.notes;
+        if ('name' in updatedFields) dbUpdates.name = updatedFields.name;
+        if ('price' in updatedFields) dbUpdates.price = updatedFields.price;
+
+        const { error } = await supabase
+          .from('pc_builds')
+          .update(dbUpdates)
+          .eq('id', id);
+
+        if (error) throw error;
+        setPcs(pcs.map(pc => pc.id === id ? { ...pc, ...updatedFields } : pc));
+      } catch (err) {
+        alert('Error updating build: ' + err.message);
+      }
+    } else {
+      // Guest mode
+      const updated = pcs.map(pc => pc.id === id ? { ...pc, ...updatedFields } : pc);
+      setPcs(updated);
+      localStorage.setItem('pc_comparison_builds', JSON.stringify(updated));
+    }
+  };
+
   const handleSaveApiKey = (key) => {
     setApiKey(key);
     if (key) {
@@ -305,6 +339,7 @@ export default function App() {
         <ComparisonGrid
           pcs={pcs}
           onDeletePc={handleDeletePc}
+          onUpdatePc={handleUpdatePc}
           highlightDifferences={highlightDifferences}
         />
       </main>
