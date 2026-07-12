@@ -221,6 +221,11 @@ Respond ONLY with the JSON object. Do not include markdown formatting like \`\`\
 
         const resData = await response.json();
         responseText = resData.choices?.[0]?.message?.content;
+        
+        if (!responseText) {
+          console.warn('AI Response Data (no content choices):', resData);
+          throw new Error(`Could not get a valid response content from the AI. Response structure: ${JSON.stringify(resData).substring(0, 180)}`);
+        }
       } 
       else if (isAnthropicKey) {
         throw new Error('Anthropic Claude API keys (sk-ant-...) cannot be used directly in the browser due to CORS security restrictions. Please use a Gemini key (starting with AIzaSy) or an OpenRouter key (starting with sk-or-).');
