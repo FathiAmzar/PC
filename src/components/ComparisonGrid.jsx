@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Cpu, HardDrive, Cpu as GpuIcon, Disc, Layers, Zap, Box, Thermometer, FileText, Edit2 } from 'lucide-react';
+import { Trash2, Cpu, HardDrive, Cpu as GpuIcon, Disc, Layers, Zap, Box, Thermometer, FileText, Edit2, Sparkles } from 'lucide-react';
 
 const SPEC_ROWS = [
   { key: 'cpu', label: 'CPU', icon: Cpu },
@@ -14,7 +14,15 @@ const SPEC_ROWS = [
   { key: 'notes', label: 'Personal Notes', icon: FileText },
 ];
 
-export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightDifferences }) {
+export default function ComparisonGrid({ 
+  pcs, 
+  onDeletePc, 
+  onUpdatePc, 
+  highlightDifferences, 
+  baselinePcId, 
+  onSetBaseline, 
+  analysisResults 
+}) {
   const [editingCell, setEditingCell] = useState(null); // { pcId, key }
   const [editingText, setEditingText] = useState('');
 
@@ -91,6 +99,61 @@ export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightD
                         </div>
                       )}
                     </div>
+                    
+                    {/* Baseline Selector */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem', width: '100%', justifyContent: 'flex-start' }}>
+                      {baselinePcId === pc.id ? (
+                        <span 
+                          style={{ 
+                            fontSize: '0.7rem', 
+                            background: 'rgba(245, 158, 11, 0.15)', 
+                            color: '#f59e0b', 
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            cursor: 'default'
+                          }}
+                        >
+                          ★ Baseline
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => onSetBaseline(pc.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.7rem',
+                            padding: '2px 8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            borderRadius: '6px',
+                            border: '1px dashed var(--border-glass)',
+                            transition: 'all 0.2s'
+                          }}
+                          title="Set as baseline for value comparison"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#f59e0b';
+                            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--border-glass)';
+                            e.currentTarget.style.background = 'none';
+                          }}
+                        >
+                          ☆ Set Baseline
+                        </button>
+                      )}
+                    </div>
+
                     <div className="pc-title-row">
                       <div style={{ flex: 1 }}>
                         {/* PC Name Inline Edit */}
@@ -288,6 +351,126 @@ export default function ComparisonGrid({ pcs, onDeletePc, onUpdatePc, highlightD
                 </tr>
               );
             })}
+
+            {/* AI Analysis Row 1: Score */}
+            {pcs.length >= 2 && (
+              <tr>
+                <th>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Sparkles size={16} style={{ color: '#c084fc' }} />
+                    <span>AI Value Score</span>
+                  </div>
+                </th>
+                {pcs.map((pc) => {
+                  const result = analysisResults[pc.id];
+                  const hasScore = result?.score !== undefined;
+                  const score = hasScore ? parseFloat(result.score) : 0;
+                  return (
+                    <td key={pc.id}>
+                      {hasScore ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', fontWeight: 800 }}>
+                          <span style={{ 
+                            fontSize: '1.15rem', 
+                            color: score >= 8.0 ? '#34d399' : score >= 6.5 ? '#60a5fa' : score >= 5.0 ? '#fbbf24' : '#f87171'
+                          }}>
+                            {score.toFixed(1)}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500 }}>/ 10</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
+
+            {/* AI Analysis Row 2: Verdict */}
+            {pcs.length >= 2 && (
+              <tr>
+                <th>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Sparkles size={16} style={{ color: '#c084fc' }} />
+                    <span>AI Value Verdict</span>
+                  </div>
+                </th>
+                {pcs.map((pc) => {
+                  const result = analysisResults[pc.id];
+                  let badgeStyle = {};
+                  if (result?.verdict) {
+                    const v = result.verdict.toLowerCase();
+                    if (v.includes('great')) {
+                      badgeStyle = { background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' };
+                    } else if (v.includes('fair')) {
+                      badgeStyle = { background: 'rgba(59, 130, 246, 0.12)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' };
+                    } else if (v.includes('slight')) {
+                      badgeStyle = { background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' };
+                    } else if (v.includes('overpriced')) {
+                      badgeStyle = { background: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' };
+                    }
+                  }
+                  return (
+                    <td key={pc.id}>
+                      {result?.verdict ? (
+                        <span 
+                          style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.02em',
+                            textTransform: 'uppercase',
+                            ...badgeStyle
+                          }}
+                        >
+                          {result.verdict}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
+
+            {/* AI Analysis Row 3: Explanation */}
+            {pcs.length >= 2 && (
+              <tr>
+                <th>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Sparkles size={16} style={{ color: '#c084fc' }} />
+                    <span>AI Analysis Details</span>
+                  </div>
+                </th>
+                {pcs.map((pc) => {
+                  const result = analysisResults[pc.id];
+                  return (
+                    <td key={pc.id} style={{ verticalAlign: 'top' }}>
+                      {result?.reason ? (
+                        <p style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--text-secondary)',
+                          lineHeight: '1.45',
+                          textAlign: 'left',
+                          maxWidth: '280px',
+                          margin: '0.25rem auto 0 auto',
+                          wordBreak: 'break-word'
+                        }}>
+                          {result.reason}
+                        </p>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                          Click 'Analyze Value with AI' above to compare.
+                        </span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
